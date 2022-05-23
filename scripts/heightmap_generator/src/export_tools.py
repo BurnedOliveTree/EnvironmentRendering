@@ -39,4 +39,4 @@ def export_to_file(export_map, path="./output.heightmap"):
     path -- save path
     """
 
-    np.savetxt(path, export_map, delimiter=",", fmt="%.2f")
+    np.savetxt(path, export_map, delimiter=",", fmt="%.7f")
