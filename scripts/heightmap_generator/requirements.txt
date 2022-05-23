@@ -1,0 +1,6 @@
+numpy
+pillow
+opensimplex
+matplotlib
+pytest
+argparse
