@@ -61,8 +61,8 @@ class HeightMapWindowConfig(WindowConfig):
                 (0.0, 0.0, 1.0),
             )
             return projection * look_at\
+                   * Matrix44.from_z_rotation(rotate_val * 2 * np.pi)\
                    * Matrix44.from_translation(trans_vec)\
-                   * Matrix44.from_x_rotation(rotate_val * 2 * np.pi)\
                    * Matrix44.from_scale(scale_vec)
 
         self.colour.value = (1.0, 0.0, 0.0)
