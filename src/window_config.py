@@ -23,7 +23,7 @@ class HeightMapWindowConfig(WindowConfig):
         self.program = self.ctx.program(vertex_shader=shaders[self.argv.shader_name].vertex_shader,
                                         fragment_shader=shaders[self.argv.shader_name].fragment_shader)
         self.read_height_map()
-        self.vao = geometry.quad_2d().instance(self.program)
+        self.generate()
         self.transform = self.program['transform']
         self.colour = self.program['colour']
     
@@ -32,8 +32,13 @@ class HeightMapWindowConfig(WindowConfig):
         with open(HeightMapWindowConfig.resource_dir / (self.argv.map_name + '.csv')) as csv_file:
             csv_reader = reader(csv_file, delimiter=',')
             for row in csv_reader:
-                result.append([float(value) for value in row])
-        self.height_map = result
+                result.append(np.array([float(value) for value in row]))
+        self.height_map = np.array(result)
+    
+    def generate(self):
+        vbo = self.ctx.buffer(self.height_map.astype('float32').tobytes())
+        self.vao = self.ctx.simple_vertex_array(self.program, vbo, 'in_position')
+        # fbo = self.ctx.simple_framebuffer((512, 512))
 
     @classmethod
     def add_arguments(cls, parser):
@@ -44,7 +49,6 @@ class HeightMapWindowConfig(WindowConfig):
     def render(self, time: float, frame_time: float):
         self.ctx.clear(0.8, 0.8, 0.8, 0.0)
         self.ctx.enable(moderngl.DEPTH_TEST)
-    #     self.vao.render(moderngl.TRIANGLE_STRIP)
 
         def calc_transform(trans_vec: tuple, scale_vec: tuple = (1.0, 1.0, 1.0), rotate_val: float = 0):
             projection = Matrix44.perspective_projection(45.0, self.aspect_ratio, 0.1, 1000.0)
@@ -58,6 +62,6 @@ class HeightMapWindowConfig(WindowConfig):
                    * Matrix44.from_x_rotation(rotate_val * 2 * np.pi)\
                    * Matrix44.from_scale(scale_vec)
 
-        self.colour.value = (0.0, 0.0, 0.0)
+        self.colour.value = (1.0, 0.0, 0.0)
         self.transform.write(calc_transform((0.0, 0.0, 5.0)).astype('float32'))
-        self.vao.render()
+        self.vao.render(moderngl.TRIANGLE_STRIP)
