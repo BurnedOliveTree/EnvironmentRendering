@@ -31,9 +31,12 @@ class HeightMapWindowConfig(WindowConfig):
         result = []
         with open(HeightMapWindowConfig.resource_dir / (self.argv.map_name + '.csv')) as csv_file:
             csv_reader = reader(csv_file, delimiter=',')
-            for row in csv_reader:
-                result.append(np.array([float(value) for value in row]))
+            for y, row in enumerate(csv_reader):
+                result.append(np.array([np.array((float(x), float(y), float(z) * 100)) for x, z in enumerate(row)])) # TODO replace magic number
         self.height_map = np.array(result)
+        self.size = self.height_map.shape
+        self.size = (self.size[0], self.size[1], 100) # TODO replace magic number
+        print(self.size)
     
     def generate(self):
         vbo = self.ctx.buffer(self.height_map.astype('float32').tobytes())
@@ -53,8 +56,8 @@ class HeightMapWindowConfig(WindowConfig):
         def calc_transform(trans_vec: tuple, scale_vec: tuple = (1.0, 1.0, 1.0), rotate_val: float = 0):
             projection = Matrix44.perspective_projection(45.0, self.aspect_ratio, 0.1, 1000.0)
             look_at = Matrix44.look_at(
-                (-20.0, -15.0, 5.0),
-                (0.0, 0.0, 1.0),
+                (-self.size[0] / 2, -self.size[1] / 2, 1.5 * self.size[2]),
+                (self.size[0] / 2, self.size[1] / 2, 0.0),
                 (0.0, 0.0, 1.0),
             )
             return projection * look_at\
