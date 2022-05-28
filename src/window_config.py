@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from csv import reader
 import moderngl
 from moderngl_window import WindowConfig
 from moderngl_window import geometry
@@ -21,15 +22,24 @@ class HeightMapWindowConfig(WindowConfig):
         shaders = get_shaders(self.argv.shader_path)
         self.program = self.ctx.program(vertex_shader=shaders[self.argv.shader_name].vertex_shader,
                                         fragment_shader=shaders[self.argv.shader_name].fragment_shader)
+        self.read_height_map()
         self.vao = geometry.quad_2d().instance(self.program)
         self.transform = self.program['transform']
         self.colour = self.program['colour']
+    
+    def read_height_map(self):
+        result = []
+        with open(HeightMapWindowConfig.resource_dir / (self.argv.map_name + '.csv')) as csv_file:
+            csv_reader = reader(csv_file, delimiter=',')
+            for row in csv_reader:
+                result.append([float(value) for value in row])
+        self.height_map = result
 
     @classmethod
     def add_arguments(cls, parser):
         parser.add_argument('--shader_path', type=str, required=True, help='Path to the directory with shaders')
         parser.add_argument('--shader_name', type=str, required=True, help='Name of the shader to look for in the shader_path directory')
-        parser.add_argument('--map_name', type=str, required=False, help='Name of the map to load')
+        parser.add_argument('--map_name', type=str, required=True, help='Name of the map to load')
 
     def render(self, time: float, frame_time: float):
         self.ctx.clear(0.8, 0.8, 0.8, 0.0)
