@@ -13,6 +13,8 @@ class HeightMapWindowConfig(WindowConfig):
     gl_version = config.GL_VERSION
     title = config.WINDOW_TITLE
     resource_dir = (Path(__file__).parent / 'resources').resolve()
+    x_scale = 1
+    y_scale = 1
     z_scale = 40
 
     def __init__(self, **kwargs):
@@ -32,7 +34,10 @@ class HeightMapWindowConfig(WindowConfig):
         with open(HeightMapWindowConfig.resource_dir / (self.argv.map_name + '.csv')) as csv_file:
             csv_reader = reader(csv_file, delimiter=',')
             for y, row in enumerate(csv_reader):
-                result.append(array([array((float(x), float(y), float(z) * HeightMapWindowConfig.z_scale)) for x, z in enumerate(row)]))
+                result.append(array([array((
+                    float(x) * HeightMapWindowConfig.x_scale,
+                    float(y) * HeightMapWindowConfig.y_scale,
+                    float(z) * HeightMapWindowConfig.z_scale)) for x, z in enumerate(row)]))
         self.height_map = array(result)
         self.size = self.height_map.shape
         self.size = (self.size[0], self.size[1], HeightMapWindowConfig.z_scale)
