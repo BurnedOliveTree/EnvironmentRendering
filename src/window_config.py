@@ -3,7 +3,6 @@ from pathlib import Path
 from csv import reader
 import moderngl
 from moderngl_window import WindowConfig
-from moderngl_window import geometry
 from pyrr import Matrix44
 import numpy as np
 
@@ -26,22 +25,27 @@ class HeightMapWindowConfig(WindowConfig):
         self.generate()
         self.transform = self.program['transform']
         self.colour = self.program['colour']
+        self.z_scale = self.program['z_scale']
     
     def read_height_map(self):
         result = []
         with open(HeightMapWindowConfig.resource_dir / (self.argv.map_name + '.csv')) as csv_file:
             csv_reader = reader(csv_file, delimiter=',')
             for y, row in enumerate(csv_reader):
-                result.append(np.array([np.array((float(x), float(y), float(z) * 100)) for x, z in enumerate(row)])) # TODO replace magic number
+                result.append(np.array([np.array((float(x), float(y), float(z) * 40)) for x, z in enumerate(row)])) # TODO replace magic number
         self.height_map = np.array(result)
         self.size = self.height_map.shape
         self.size = (self.size[0], self.size[1], 100) # TODO replace magic number
         print(self.size)
     
     def generate(self):
-        vbo = self.ctx.buffer(self.height_map.astype('float32').tobytes())
+        vertices = []
+        for y in range(self.size[1] - 1):
+            for x in range(self.size[0]):
+                vertices.append((self.height_map[y][x][0], self.height_map[y][x][1], self.height_map[y][x][2]))
+                vertices.append((self.height_map[y+1][x][0], self.height_map[y+1][x][1], self.height_map[y+1][x][2]))
+        vbo = self.ctx.buffer(np.array(vertices).astype('float32').tobytes())
         self.vao = self.ctx.simple_vertex_array(self.program, vbo, 'in_position')
-        # fbo = self.ctx.simple_framebuffer((512, 512))
 
     @classmethod
     def add_arguments(cls, parser):
@@ -65,6 +69,7 @@ class HeightMapWindowConfig(WindowConfig):
                    * Matrix44.from_translation(trans_vec)\
                    * Matrix44.from_scale(scale_vec)
 
-        self.colour.value = (1.0, 0.0, 0.0)
+        self.colour.value = (0.5, 0.25, 0.0)
+        self.z_scale.value = 40 # TODO replace magic number
         self.transform.write(calc_transform((0.0, 0.0, 5.0)).astype('float32'))
         self.vao.render(moderngl.TRIANGLE_STRIP)
