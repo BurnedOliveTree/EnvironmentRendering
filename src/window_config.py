@@ -4,7 +4,8 @@ from moderngl import DEPTH_TEST, TRIANGLE_STRIP
 from moderngl_window import WindowConfig
 from numpy import array, pi
 from pyrr import Matrix44
-
+from PIL import Image
+import os
 import config
 from shaders.shader_utils import get_shaders
 
@@ -24,11 +25,27 @@ class HeightMapWindowConfig(WindowConfig):
         self.program = self.ctx.program(vertex_shader=shaders[self.argv.shader_name].vertex_shader,
                                         fragment_shader=shaders[self.argv.shader_name].fragment_shader)
         self.read_height_map()
+        self.load_textures()
         self.generate()
         self.transform = self.program['transform']
         self.colour = self.program['colour']
         self.z_scale = self.program['z_scale']
-    
+
+    def load_textures(self):
+        self.program['snow_texture'] = 0
+        self.program['grass_texture'] = 1
+        self.program['stone_texture'] = 2
+
+        snow_img = Image.open(os.path.join(self.argv.textures_path, self.argv.snow_texture_file))
+        snow_texture = self.ctx.texture(snow_img.size, 4, snow_img.tobytes(), alignment=4)
+        snow_texture.use(location=0)
+        stone_img = Image.open(os.path.join(self.argv.textures_path, self.argv.stone_texture_file))
+        stone_texture = self.ctx.texture(stone_img.size, 3, stone_img.tobytes(), alignment=4)
+        stone_texture.use(location=2)
+        grass_img = Image.open(os.path.join(self.argv.textures_path, self.argv.grass_texture_file))
+        grass_texture = self.ctx.texture(grass_img.size, 3, grass_img.tobytes(), alignment=4)
+        grass_texture.use(location=1)
+
     def read_height_map(self):
         result = []
         with open(HeightMapWindowConfig.resource_dir / (self.argv.map_name + '.csv')) as csv_file:
@@ -41,13 +58,13 @@ class HeightMapWindowConfig(WindowConfig):
         self.height_map = array(result)
         self.size = self.height_map.shape
         self.size = (self.size[0], self.size[1], HeightMapWindowConfig.z_scale)
-    
+
     def generate(self):
         vertices = []
         for y in range(self.size[1]):
             for x in range(self.size[0]):
                 vertices.append(self.height_map[y][x])
-        
+
         indices = []
         for y in range(self.size[1] - 1):
             for x in range(self.size[0] - 1):
@@ -66,8 +83,16 @@ class HeightMapWindowConfig(WindowConfig):
     @classmethod
     def add_arguments(cls, parser):
         parser.add_argument('--shader_path', type=str, required=True, help='Path to the directory with shaders')
-        parser.add_argument('--shader_name', type=str, required=True, help='Name of the shader to look for in the shader_path directory')
+        parser.add_argument('--shader_name', type=str, required=True,
+                            help='Name of the shader to look for in the shader_path directory')
         parser.add_argument('--map_name', type=str, required=True, help='Name of the map to load')
+        parser.add_argument('--textures_path', type=str, required=True, help='Path to the directory with texutres')
+        parser.add_argument('--snow_texture_file', type=str, required=True,
+                            help='Filename (with extension) of snow texture')
+        parser.add_argument('--stone_texture_file', type=str, required=True,
+                            help='Filename (with extension) of stone texture')
+        parser.add_argument('--grass_texture_file', type=str, required=True,
+                            help='Filename (with extension) of grass texture')
 
     def render(self, time: float, frame_time: float):
         self.ctx.clear(0.8, 0.8, 0.8, 0.0)
@@ -76,13 +101,13 @@ class HeightMapWindowConfig(WindowConfig):
         def calc_transform(trans_vec: tuple, scale_vec: tuple = (1.0, 1.0, 1.0), rotate_val: float = 0):
             projection = Matrix44.perspective_projection(45.0, self.aspect_ratio, 0.1, 1000.0)
             look_at = Matrix44.look_at(
-                (-self.size[0] / 2, -self.size[1] / 2, 160), # TODO replace magic number 160
+                (-self.size[0] / 2, -self.size[1] / 2, 160),  # TODO replace magic number 160
                 (self.size[0] / 2, self.size[1] / 2, 0.0),
                 (0.0, 0.0, 1.0),
             )
-            return projection * look_at\
-                   * Matrix44.from_z_rotation(rotate_val * 2 * pi)\
-                   * Matrix44.from_translation(trans_vec)\
+            return projection * look_at \
+                   * Matrix44.from_z_rotation(rotate_val * 2 * pi) \
+                   * Matrix44.from_translation(trans_vec) \
                    * Matrix44.from_scale(scale_vec)
 
         self.colour.value = (0.5, 0.25, 0.0)
