@@ -1,5 +1,8 @@
+import struct
 from csv import reader
 from pathlib import Path
+
+import numpy as np
 from moderngl import DEPTH_TEST, TRIANGLE_STRIP
 from moderngl_window import WindowConfig
 from numpy import array, pi
@@ -61,24 +64,95 @@ class HeightMapWindowConfig(WindowConfig):
 
     def generate(self):
         vertices = []
+        vertices_and_normals = []
         for y in range(self.size[1]):
             for x in range(self.size[0]):
                 vertices.append(self.height_map[y][x])
+                vertices_and_normals.append([*self.height_map[y][x], 0, 0, 0])
+                # vertices[len(vertices) - 1] = vertices[len(vertices) - 1]
+                # vertices.append(self.height_map[y][x])
 
         indices = []
+        triangle_normals = []
         for y in range(self.size[1] - 1):
+            # normals.append([])
             for x in range(self.size[0] - 1):
-                indices.append(x + y * self.size[0])
-                indices.append(x + 1 + y * self.size[0])
-                indices.append(x + (y + 1) * self.size[0])
-                indices.append(x + 1 + (y + 1) * self.size[0])
-                indices.append(x + (y + 1) * self.size[0])
-                indices.append(x + 1 + y * self.size[0])
-            indices.append(-1)
+                # first triangle
+                v1_i = x + y * self.size[0]
+                v2_i = x + 1 + y * self.size[0]
+                v3_i = x + (y + 1) * self.size[0]
+                indices.append(v1_i)
+                indices.append(v2_i)
+                indices.append(v3_i)
+                v1 = vertices[v1_i]
+                v2 = vertices[v2_i]
+                v3 = vertices[v3_i]
+                edge1 = v2 - v1
+                edge2 = v3 - v1
+                cross = np.cross(edge1, edge2)
+                triangle_normals.append(cross)  # todo normalize
 
-        vbo = self.ctx.buffer(array(vertices).astype('float32').tobytes())
+                vertices_and_normals[v1_i][3] += cross[0]
+                vertices_and_normals[v1_i][4] += cross[1]
+                vertices_and_normals[v1_i][5] += cross[2]
+                vertices_and_normals[v2_i][3] += cross[0]
+                vertices_and_normals[v2_i][4] += cross[1]
+                vertices_and_normals[v2_i][5] += cross[2]
+                vertices_and_normals[v3_i][3] += cross[0]
+                vertices_and_normals[v3_i][4] += cross[1]
+                vertices_and_normals[v3_i][5] += cross[2]
+
+                # second triangle
+                v1_i = x + 1 + (y + 1) * self.size[0]
+                v2_i = x + (y + 1) * self.size[0]
+                v3_i = x + 1 + y * self.size[0]
+                indices.append(v1_i)
+                indices.append(v2_i)
+                indices.append(v3_i)
+
+                v1 = vertices[v1_i]
+                v2 = vertices[v2_i]
+                v3 = vertices[v3_i]
+                edge1 = v2 - v1
+                edge2 = v3 - v1
+                cross = np.cross(edge1, edge2)
+                triangle_normals.append(cross)  # todo normalize
+                # normals.append((1, 1, 1))
+
+                vertices_and_normals[v1_i][3] += cross[0]
+                vertices_and_normals[v1_i][4] += cross[1]
+                vertices_and_normals[v1_i][5] += cross[2]
+                vertices_and_normals[v2_i][3] += cross[0]
+                vertices_and_normals[v2_i][4] += cross[1]
+                vertices_and_normals[v2_i][5] += cross[2]
+                vertices_and_normals[v3_i][3] += cross[0]
+                vertices_and_normals[v3_i][4] += cross[1]
+                vertices_and_normals[v3_i][5] += cross[2]
+
+            indices.append(-1)
+            triangle_normals.append(-1)
+        # for ind in indices:
+        #     if(ind != -1):
+
+        # normals.append(-1)
+        # print(triangle_normals)
+        print(vertices_and_normals)
+        # vertices_and_normals_buffer = struct.pack("6f", *vertices_and_normals)
+
+        vbo = self.ctx.buffer(array(vertices_and_normals).astype('float32').tobytes())
+        # vbo = self.ctx.buffer(vertices_and_normals_buffer)
+
+        # vbo_norm = self.ctx.buffer(array(triangle_normals).astype('float32').tobytes())
+
         ibo = self.ctx.buffer(array(indices).astype('int32').tobytes())
-        self.vao = self.ctx.vertex_array(self.program, vbo, 'in_position', index_buffer=ibo)
+        # self.vao = self.ctx.vertex_array(self.program, vbo, 'in_position', index_buffer=ibo)
+        self.vao = self.ctx.vertex_array(self.program, [
+            (vbo, '3f 3f', 'in_position', 'in_normal'),
+        ],
+                                         index_buffer=ibo,
+                                         index_element_size=4)
+
+        # self.vao2 = self.ctx.vertex_array(self.program, vbo, 'in_normal', index_buffer=ibo)
 
     @classmethod
     def add_arguments(cls, parser):
