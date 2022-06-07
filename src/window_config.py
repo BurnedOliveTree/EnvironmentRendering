@@ -19,7 +19,7 @@ class HeightMapWindowConfig(WindowConfig):
     resource_dir = (Path(__file__).parent / 'resources').resolve()
     xy_scale = 1
     z_scale = 40
-
+    texture_scale = 1000
     def __init__(self, **kwargs):
         super(HeightMapWindowConfig, self).__init__(**kwargs)
 
@@ -31,7 +31,7 @@ class HeightMapWindowConfig(WindowConfig):
         self.generate()
         self.transform = self.program['transform']
         self.colour = self.program['colour']
-        # self.z_scale = self.program['z_scale']
+        self.texture_scale = self.program['texture_scale']
 
     def load_textures(self):
         self.program['snow_texture'] = 0
@@ -68,12 +68,22 @@ class HeightMapWindowConfig(WindowConfig):
             for x in range(self.size[0]):
                 vertices.append(self.height_map[y][x])
                 vertices_and_normals.append([*self.height_map[y][x], 0, 0, 0])
-                # vertices[len(vertices) - 1] = vertices[len(vertices) - 1]
-                # vertices.append(self.height_map[y][x])
 
         indices = []
-        triangle_normals = []
         print("calculating normals...")
+
+        def create_triangles(v1_i, v2_i, v3_i):
+            indices.append(v1_i)
+            indices.append(v2_i)
+            indices.append(v3_i)
+            edge1 = vertices[v2_i] - vertices[v1_i]
+            edge2 = vertices[v3_i] - vertices[v1_i]
+            cross = np.cross(edge1, edge2)
+            for i in range(3):
+                vertices_and_normals[v1_i][3+i] += cross[i]
+                vertices_and_normals[v2_i][3+i] += cross[i]
+                vertices_and_normals[v3_i][3+i] += cross[i]
+
         for y in range(self.size[1] - 1):
             # normals.append([])
             for x in range(self.size[0] - 1):
@@ -81,78 +91,24 @@ class HeightMapWindowConfig(WindowConfig):
                 v1_i = x + y * self.size[0]
                 v2_i = x + 1 + y * self.size[0]
                 v3_i = x + (y + 1) * self.size[0]
-                indices.append(v1_i)
-                indices.append(v2_i)
-                indices.append(v3_i)
-                v1 = vertices[v1_i]
-                v2 = vertices[v2_i]
-                v3 = vertices[v3_i]
-                edge1 = v2 - v1
-                edge2 = v3 - v1
-                cross = np.cross(edge1, edge2)
-                triangle_normals.append(cross)  # todo normalize
-
-                vertices_and_normals[v1_i][3] += cross[0]
-                vertices_and_normals[v1_i][4] += cross[1]
-                vertices_and_normals[v1_i][5] += cross[2]
-                vertices_and_normals[v2_i][3] += cross[0]
-                vertices_and_normals[v2_i][4] += cross[1]
-                vertices_and_normals[v2_i][5] += cross[2]
-                vertices_and_normals[v3_i][3] += cross[0]
-                vertices_and_normals[v3_i][4] += cross[1]
-                vertices_and_normals[v3_i][5] += cross[2]
+                create_triangles(v1_i, v2_i, v3_i)
 
                 # second triangle
                 v1_i = x + 1 + (y + 1) * self.size[0]
                 v2_i = x + (y + 1) * self.size[0]
                 v3_i = x + 1 + y * self.size[0]
-                indices.append(v1_i)
-                indices.append(v2_i)
-                indices.append(v3_i)
-
-                v1 = vertices[v1_i]
-                v2 = vertices[v2_i]
-                v3 = vertices[v3_i]
-                edge1 = v2 - v1
-                edge2 = v3 - v1
-                cross = np.cross(edge1, edge2)
-                triangle_normals.append(cross)  # todo normalize
-                # normals.append((1, 1, 1))
-
-                vertices_and_normals[v1_i][3] += cross[0]
-                vertices_and_normals[v1_i][4] += cross[1]
-                vertices_and_normals[v1_i][5] += cross[2]
-                vertices_and_normals[v2_i][3] += cross[0]
-                vertices_and_normals[v2_i][4] += cross[1]
-                vertices_and_normals[v2_i][5] += cross[2]
-                vertices_and_normals[v3_i][3] += cross[0]
-                vertices_and_normals[v3_i][4] += cross[1]
-                vertices_and_normals[v3_i][5] += cross[2]
+                create_triangles(v1_i, v2_i, v3_i)
 
             indices.append(-1)
-            triangle_normals.append(-1)
-        # for ind in indices:
-        #     if(ind != -1):
 
-        # normals.append(-1)
-        # print(triangle_normals)
-        # print(vertices_and_normals)
-        # vertices_and_normals_buffer = struct.pack("6f", *vertices_and_normals)
         print("done")
         vbo = self.ctx.buffer(array(vertices_and_normals).astype('float32').tobytes())
-        # vbo = self.ctx.buffer(vertices_and_normals_buffer)
-
-        # vbo_norm = self.ctx.buffer(array(triangle_normals).astype('float32').tobytes())
-
         ibo = self.ctx.buffer(array(indices).astype('int32').tobytes())
-        # self.vao = self.ctx.vertex_array(self.program, vbo, 'in_position', index_buffer=ibo)
         self.vao = self.ctx.vertex_array(self.program, [
             (vbo, '3f 3f', 'in_position', 'in_normal'),
         ],
                                          index_buffer=ibo,
                                          index_element_size=4)
-
-        # self.vao2 = self.ctx.vertex_array(self.program, vbo, 'in_normal', index_buffer=ibo)
 
     @classmethod
     def add_arguments(cls, parser):
@@ -172,7 +128,9 @@ class HeightMapWindowConfig(WindowConfig):
         self.ctx.clear(0.8, 0.8, 0.8, 0.0)
         self.ctx.enable(DEPTH_TEST)
 
-        def calc_transform(trans_vec: tuple, scale_vec: tuple = (1.0, 1.0, 1.0), rotate_val: float = 0):  # todo add time to rotate val
+        def calc_transform(trans_vec: tuple,
+                           scale_vec: tuple = (1.0, 1.0, 1.0),
+                           rotate_val: float = 0):  # todo add time to rotate val
             projection = Matrix44.perspective_projection(45.0, self.aspect_ratio, 0.1, 1000.0)
             look_at = Matrix44.look_at(
                 (-self.size[0] / 2, -self.size[1] / 2, 160),  # TODO replace magic number 160
@@ -185,6 +143,6 @@ class HeightMapWindowConfig(WindowConfig):
                    * Matrix44.from_scale(scale_vec)
 
         self.colour.value = (0.72, 0.68, 0.66)
-        # self.z_scale.value = HeightMapWindowConfig.z_scale
+        self.texture_scale.value = HeightMapWindowConfig.texture_scale
         self.transform.write(calc_transform((0.0, 0.0, 5.0)).astype('float32'))
         self.vao.render(TRIANGLE_STRIP)

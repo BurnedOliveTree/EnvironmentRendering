@@ -8,7 +8,7 @@ out vec4 f_color;
 
 //in float colour_intensity;
 uniform vec3 colour;
-//uniform int z_scale;
+uniform int texture_scale;
 uniform sampler2D snow_texture;
 uniform sampler2D stone_texture;
 uniform sampler2D grass_texture;
@@ -25,7 +25,7 @@ void main() {
     specular_light_color = vec3(1, 1, 1);
 
     // Ustawienie pozycji światła
-    light_pos = vec3(-5, 7, 3);
+    light_pos = vec3(-5, 7, 0);
 
     // Obliczenie znormalizowanego wektora normalnego danego wierzchołka
     vec3 normal_direction = normalize(v_normal);
@@ -70,7 +70,7 @@ void main() {
     specular = specular_strength * specular_impact * specular_light_color * object_specular_color;
     // Ustawienie koloru fragmentu na sumę składowych kolorów ambient, diffuse i
 
-    vec2 tex_coord = vec2(v_position[0]/1500, v_position[1]/1500);
+    vec2 tex_coord = vec2(v_position[0]/texture_scale, v_position[1]/texture_scale);
     vec3 grass_tex = vec3(texture(grass_texture, tex_coord));
     vec3 stone_tex = vec3(texture(stone_texture, tex_coord));
     vec3 snow_tex = vec3(texture(snow_texture, tex_coord));
