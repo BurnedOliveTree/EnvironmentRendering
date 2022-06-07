@@ -17,8 +17,7 @@ class HeightMapWindowConfig(WindowConfig):
     gl_version = config.GL_VERSION
     title = config.WINDOW_TITLE
     resource_dir = (Path(__file__).parent / 'resources').resolve()
-    x_scale = 1
-    y_scale = 1
+    xy_scale = 1
     z_scale = 40
 
     def __init__(self, **kwargs):
@@ -32,7 +31,7 @@ class HeightMapWindowConfig(WindowConfig):
         self.generate()
         self.transform = self.program['transform']
         self.colour = self.program['colour']
-        self.z_scale = self.program['z_scale']
+        # self.z_scale = self.program['z_scale']
 
     def load_textures(self):
         self.program['snow_texture'] = 0
@@ -55,8 +54,8 @@ class HeightMapWindowConfig(WindowConfig):
             csv_reader = reader(csv_file, delimiter=',')
             for y, row in enumerate(csv_reader):
                 result.append(array([array((
-                    float(x) * HeightMapWindowConfig.x_scale,
-                    float(y) * HeightMapWindowConfig.y_scale,
+                    float(x) * HeightMapWindowConfig.xy_scale,
+                    float(y) * HeightMapWindowConfig.xy_scale,
                     float(z) * HeightMapWindowConfig.z_scale)) for x, z in enumerate(row)]))
         self.height_map = array(result)
         self.size = self.height_map.shape
@@ -74,6 +73,7 @@ class HeightMapWindowConfig(WindowConfig):
 
         indices = []
         triangle_normals = []
+        print("calculating normals...")
         for y in range(self.size[1] - 1):
             # normals.append([])
             for x in range(self.size[0] - 1):
@@ -136,9 +136,9 @@ class HeightMapWindowConfig(WindowConfig):
 
         # normals.append(-1)
         # print(triangle_normals)
-        print(vertices_and_normals)
+        # print(vertices_and_normals)
         # vertices_and_normals_buffer = struct.pack("6f", *vertices_and_normals)
-
+        print("done")
         vbo = self.ctx.buffer(array(vertices_and_normals).astype('float32').tobytes())
         # vbo = self.ctx.buffer(vertices_and_normals_buffer)
 
@@ -172,7 +172,7 @@ class HeightMapWindowConfig(WindowConfig):
         self.ctx.clear(0.8, 0.8, 0.8, 0.0)
         self.ctx.enable(DEPTH_TEST)
 
-        def calc_transform(trans_vec: tuple, scale_vec: tuple = (1.0, 1.0, 1.0), rotate_val: float = 0):
+        def calc_transform(trans_vec: tuple, scale_vec: tuple = (1.0, 1.0, 1.0), rotate_val: float = 0):  # todo add time to rotate val
             projection = Matrix44.perspective_projection(45.0, self.aspect_ratio, 0.1, 1000.0)
             look_at = Matrix44.look_at(
                 (-self.size[0] / 2, -self.size[1] / 2, 160),  # TODO replace magic number 160
@@ -184,7 +184,7 @@ class HeightMapWindowConfig(WindowConfig):
                    * Matrix44.from_translation(trans_vec) \
                    * Matrix44.from_scale(scale_vec)
 
-        self.colour.value = (0.5, 0.25, 0.0)
-        self.z_scale.value = HeightMapWindowConfig.z_scale
+        self.colour.value = (0.72, 0.68, 0.66)
+        # self.z_scale.value = HeightMapWindowConfig.z_scale
         self.transform.write(calc_transform((0.0, 0.0, 5.0)).astype('float32'))
         self.vao.render(TRIANGLE_STRIP)
