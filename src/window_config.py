@@ -37,6 +37,8 @@ class HeightMapWindowConfig(WindowConfig):
         self.program['snow_texture'] = 0
         self.program['grass_texture'] = 1
         self.program['stone_texture'] = 2
+        self.program['water_texture'] = 3
+
 
         snow_img = Image.open(os.path.join(self.argv.textures_path, self.argv.snow_texture_file))
         snow_texture = self.ctx.texture(snow_img.size, 4, snow_img.tobytes(), alignment=4)
@@ -47,7 +49,9 @@ class HeightMapWindowConfig(WindowConfig):
         grass_img = Image.open(os.path.join(self.argv.textures_path, self.argv.grass_texture_file))
         grass_texture = self.ctx.texture(grass_img.size, 3, grass_img.tobytes(), alignment=4)
         grass_texture.use(location=1)
-
+        water_img = Image.open(os.path.join(self.argv.textures_path, self.argv.water_texture_file))
+        water_texture = self.ctx.texture(water_img.size, 3, water_img.tobytes(), alignment=4)
+        water_texture.use(location=3)
     def read_height_map(self):
         result = []
         with open(HeightMapWindowConfig.resource_dir / (self.argv.map_name + '.csv')) as csv_file:
@@ -66,6 +70,7 @@ class HeightMapWindowConfig(WindowConfig):
         vertices_and_normals = []
         for y in range(self.size[1]):
             for x in range(self.size[0]):
+                self.height_map[y][x][2] = max(self.height_map[y][x][2], 10)
                 vertices.append(self.height_map[y][x])
                 vertices_and_normals.append([*self.height_map[y][x], 0, 0, 0])
 
@@ -123,6 +128,8 @@ class HeightMapWindowConfig(WindowConfig):
                             help='Filename (with extension) of stone texture')
         parser.add_argument('--grass_texture_file', type=str, required=True,
                             help='Filename (with extension) of grass texture')
+        parser.add_argument('--water_texture_file', type=str, required=True,
+                            help='Filename (with extension) of water texture')
 
     def render(self, time: float, frame_time: float):
         self.ctx.clear(0.8, 0.8, 0.8, 0.0)

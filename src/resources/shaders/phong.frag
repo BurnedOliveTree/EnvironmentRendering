@@ -12,6 +12,8 @@ uniform int texture_scale;
 uniform sampler2D snow_texture;
 uniform sampler2D stone_texture;
 uniform sampler2D grass_texture;
+uniform sampler2D water_texture;
+
 
 void main() {
     // Ustawienie połyskliwości i kolorów obiektu
@@ -74,8 +76,14 @@ void main() {
     vec3 grass_tex = vec3(texture(grass_texture, tex_coord));
     vec3 stone_tex = vec3(texture(stone_texture, tex_coord));
     vec3 snow_tex = vec3(texture(snow_texture, tex_coord));
+    vec3 water_tex = vec3(texture(water_texture, tex_coord));
 
-    if (v_position[2] < 20){
+
+    if (v_position[2] == 10){
+        f_color =  vec4(colour * (ambient + diffuse + water_tex) + specular, 1.0);
+    }
+
+    else if (v_position[2] < 20){
         f_color =  vec4(colour * (ambient + diffuse + grass_tex ) + specular, 1.0);
     }
     else if (v_position[2] < 35){
