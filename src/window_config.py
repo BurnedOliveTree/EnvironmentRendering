@@ -137,10 +137,10 @@ class HeightMapWindowConfig(WindowConfig):
 
         def calc_transform(trans_vec: tuple,
                            scale_vec: tuple = (1.0, 1.0, 1.0),
-                           rotate_val: float = 0):  # todo add time to rotate val
+                           rotate_val: float = time / 10):
             projection = Matrix44.perspective_projection(45.0, self.aspect_ratio, 0.1, 1000.0)
             look_at = Matrix44.look_at(
-                (-self.size[0] / 2, -self.size[1] / 2, 160),  # TODO replace magic number 160
+                (-self.size[0], -self.size[1], 160.0),  # TODO replace magic number 160
                 (self.size[0] / 2, self.size[1] / 2, 0.0),
                 (0.0, 0.0, 1.0),
             )
@@ -151,5 +151,5 @@ class HeightMapWindowConfig(WindowConfig):
 
         self.colour.value = (0.72, 0.68, 0.66)
         self.texture_scale.value = HeightMapWindowConfig.texture_scale
-        self.transform.write(calc_transform((0.0, 0.0, 5.0)).astype('float32'))
+        self.transform.write(calc_transform((-self.size[0] / 2, -self.size[0] / 2, 5.0)).astype('float32'))
         self.vao.render(TRIANGLE_STRIP)
